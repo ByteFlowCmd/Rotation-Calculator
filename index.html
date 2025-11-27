@@ -229,10 +229,12 @@
                 <select x-model="rotationSystem"
                         @change="generateCalendar()"
                         class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors">
+                    <option value="4-4-4-4">4-4-4-4</option>
                     <option value="4-4-4-8">4-4-4-8</option>
                     <option value="4-8-4-4">4-8-4-4</option>
                     <option value="4-6-4-6">4-6-4-6</option>
                     <option value="4-8-4-8">4-8-4-8</option>
+                    <option value="6-6-6-6">6-6-6-6</option>
                 </select>
             </div>
 
@@ -364,7 +366,7 @@ function rotaApp() {
         /* -------- STATE -------- */
         darkMode: localStorage.getItem('darkMode') === 'true',
         signOnDate: dayjs().format('YYYY-MM-DD'),
-        rotationSystem: '4-4-4-8',
+        rotationSystem: '4-4-4-4',
         periodYears: 1,
         travelBefore: 1,
         travelAfter: 1,
@@ -385,10 +387,12 @@ function rotaApp() {
         /* -------- ROTATION MAP -------- */
         getRotationWeeks() {
             return {
+                '4-4-4-4': [4,4,4,4],
                 '4-4-4-8': [4,4,4,8],
                 '4-8-4-4': [4,8,4,4],
                 '4-6-4-6': [4,6,4,6],
-                '4-8-4-8': [4,8,4,8]
+                '4-8-4-8': [4,8,4,8],
+                '6-6-6-6': [6,6,6,6]
             }[this.rotationSystem];
         },
 
