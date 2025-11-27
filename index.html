@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" x-data="rotaApp()" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seafarer Rotation Calculator 🚢</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
+<style>
+    [x-cloak] { display: none !important; }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        font-size: 0.75rem;
+        min-height: 32px;
+    }
+
+    /* Responsywność - lepsze rozmiary na mobile */
+    @media (max-width: 640px) {
+        .calendar-day {
+            font-size: 0.65rem;
+            min-height: 28px;
+        }
+    }
+
+    /* ----------- PRINT MODE ------------ */
+    @media print {
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+
+        body, html {
+            background: white !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ukryj wszystko */
+        body * {
+            visibility: hidden !important;
+        }
+
+        /* pokaż tylko kalendarz */
+        #print-calendar, #print-calendar * {
+            visibility: visible !important;
+        }
+
+        #print-calendar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white !important;
+        }
+
+        /* Tytuł na pierwszej stronie */
+        .print-header {
+            text-align: center;
+            margin-bottom: 8mm;
+            page-break-after: avoid;
+            font-size: 13pt;
+        }
+
+        .print-header div:first-child {
+            font-size: 15pt;
+            margin-bottom: 2mm;
+        }
+
+        /* Siatka 3x3 (9 miesięcy) */
+        .print-grid {
+            display: block !important;
+        }
+
+        /* Wrapper dla każdej strony - 9 miesięcy */
+        .month-card {
+            display: inline-block !important;
+            width: 31% !important;
+            vertical-align: top !important;
+            background: white !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4px !important;
+            padding: 3mm !important;
+            margin: 0 1% 4mm 1% !important;
+            page-break-inside: avoid !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Co 9 miesięcy - nowa strona */
+        .month-card:nth-child(9n+10) {
+            page-break-before: always !important;
+        }
+
+        /* Pierwszy miesiąc po headerze nie łamie strony */
+        .month-card:nth-child(1) {
+            page-break-before: avoid !important;
+        }
+
+        /* Co 3 miesiące przejdź do nowej linii (3 kolumny) */
+        .month-card:nth-child(3n+1) {
+            clear: left;
+        }
+
+        .month-card h3 {
+            font-size: 9pt;
+            margin-bottom: 2mm;
+            font-weight: bold;
+        }
+
+        .calendar-grid {
+            gap: 0.5px !important;
+        }
+
+        .calendar-day {
+            border: 0.5px solid #e2e8f0 !important;
+            min-height: 20px !important;
+            font-size: 7pt;
+        }
+
+        /* Nagłówki dni tygodnia */
+        .calendar-grid > div:first-child > div {
+            font-size: 7pt;
+        }
+
+        /* Kolory w wydruku */
+        .bg-blue-500 {
+            background-color: #3b82f6 !important;
+            color: white !important;
+        }
+
+        .bg-green-500 {
+            background-color: #22c55e !important;
+            color: white !important;
+        }
+
+        .bg-amber-400 {
+            background-color: #fbbf24 !important;
+            color: black !important;
+        }
+
+        .no-print { 
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Legenda */
+        .print-legend {
+            display: flex !important;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 5mm;
+            page-break-before: avoid;
+            font-size: 8pt;
+        }
+
+        .legend-item {
+            display: flex !important;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid #999;
+        }
+    }
+</style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 min-h-screen transition-colors duration-200">
+
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6" x-cloak>
+
+    <!-- HEADER -->
+    <header class="text-center mb-6 sm:mb-8 no-print">
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
+            🚢 Rotation Calculator
+        </h1>
+
+        <button
+            @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode.toString())"
+            class="p-2 rounded-full bg-white dark:bg-slate-700 shadow-lg mt-3 transition-all duration-200 hover:scale-110">
+            <span x-show="!darkMode" class="text-2xl">🌙</span>
+            <span x-show="darkMode" class="text-2xl">☀️</span>
+        </button>
+    </header>
+
+
+
+    <!-- FORM -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-5 mb-6 no-print transition-colors duration-200">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+            <!-- DATE -->
+            <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 block mb-1">📅 Sign-on Date</label>
+                <input type="date"
+                    x-model="signOnDate"
+                    @change="generateCalendar()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors">
+            </div>
+
+            <!-- SYSTEM -->
+            <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 block mb-1">🔄 Rotation System</label>
+                <select x-model="rotationSystem"
+                        @change="generateCalendar()"
+                        class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors">
+                    <option value="4-4-4-8">4-4-4-8</option>
+                    <option value="4-8-4-4">4-8-4-4</option>
+                    <option value="4-6-4-6">4-6-4-6</option>
+                    <option value="4-8-4-8">4-8-4-8</option>
+                </select>
+            </div>
+
+            <!-- YEARS -->
+            <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 block mb-1">📆 Generate for</label>
+                <select x-model="periodYears"
+                        @change="generateCalendar()"
+                        class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors">
+                    <option value="1">1 year</option>
+                    <option value="2">2 years</option>
+                </select>
+            </div>
+
+            <!-- TRAVEL -->
+            <div>
+                <label class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 block mb-1">✈️ Travel Days (Before/After)</label>
+                <div class="flex gap-2">
+                    <input type="number" min="0" max="7"
+                        x-model.number="travelBefore"
+                        @change="generateCalendar()"
+                        class="w-full px-2 sm:px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-center bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        placeholder="Before">
+                    <input type="number" min="0" max="7"
+                        x-model.number="travelAfter"
+                        @change="generateCalendar()"
+                        class="w-full px-2 sm:px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-center bg-white dark:bg-slate-700 dark:text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                        placeholder="After">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                <span class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">On Ship</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                <span class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">At Home</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-amber-400 rounded"></div>
+                <span class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">Travel</span>
+            </div>
+        </div>
+
+    </div>
+
+
+
+    <!-- EXPORT BUTTON -->
+    <div class="flex justify-center gap-3 mb-6 no-print">
+        <button @click="exportToPDF()"
+            class="px-4 sm:px-6 py-2 sm:py-3 rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-lg text-sm sm:text-base font-medium">
+            📄 Export PDF
+        </button>
+    </div>
+
+
+
+    <!-- PRINT AREA -->
+    <div id="print-calendar">
+
+        <div class="print-header text-center text-lg sm:text-xl font-bold mb-4 sm:mb-6">
+            <div class="text-slate-800 dark:text-white">Seafarer Rotation Schedule</div>
+            <div class="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-2">
+                Rotation: <span x-text="rotationSystem"></span> | 
+                Start date: <span x-text="signOnDate"></span>
+            </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div class="print-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+            <template x-for="(month, index) in calendarMonths" :key="month.name">
+                <div class="month-card bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 transition-colors duration-200 border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-center font-bold mb-2 sm:mb-3 text-sm sm:text-base text-slate-800 dark:text-slate-100" x-text="month.name"></h3>
+
+                    <div class="calendar-grid mb-1">
+                        <template x-for="d in ['Mo','Tu','We','Th','Fr','Sa','Su']">
+                            <div class="text-center text-xs font-medium text-slate-500 dark:text-slate-400" x-text="d"></div>
+                        </template>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <template x-for="day in month.days">
+                            <div class="calendar-day rounded flex items-center justify-center font-medium"
+                                :class="{
+                                    'bg-blue-500 text-white': day.type === 'ship',
+                                    'bg-green-500 text-white': day.type === 'home',
+                                    'bg-amber-400 text-black': day.type === 'travel',
+                                    'text-slate-300 dark:text-slate-600': day.type === 'empty'
+                                }"
+                                x-text="day.number">
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Print Legend -->
+        <div class="print-legend" style="display: none;">
+            <div class="legend-item">
+                <div class="legend-box bg-blue-500"></div>
+                <span>On Ship</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-green-500"></div>
+                <span>At Home</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box bg-amber-400"></div>
+                <span>Travel</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+function rotaApp() {
+    return {
+
+        /* -------- STATE -------- */
+        darkMode: localStorage.getItem('darkMode') === 'true',
+        signOnDate: dayjs().format('YYYY-MM-DD'),
+        rotationSystem: '4-4-4-8',
+        periodYears: 1,
+        travelBefore: 1,
+        travelAfter: 1,
+
+        calendarMonths: [],
+        dayTypes: {},
+
+        /* -------- INIT -------- */
+        init() {
+            // Wczytaj dark mode z localStorage
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedDarkMode !== null) {
+                this.darkMode = savedDarkMode === 'true';
+            }
+            this.generateCalendar();
+        },
+
+        /* -------- ROTATION MAP -------- */
+        getRotationWeeks() {
+            return {
+                '4-4-4-8': [4,4,4,8],
+                '4-8-4-4': [4,8,4,4],
+                '4-6-4-6': [4,6,4,6],
+                '4-8-4-8': [4,8,4,8]
+            }[this.rotationSystem];
+        },
+
+        /* -------- GENERATE -------- */
+        generateCalendar() {
+
+            const start = dayjs(this.signOnDate);
+            const end   = start.add(this.periodYears, "year");
+
+            this.dayTypes = {};
+
+            let date = start.clone();
+            let idx = 0;
+            let weeks = this.getRotationWeeks();
+
+            /* --- Rotacja --- */
+            while(date.isBefore(end)) {
+
+                const weeksCount = weeks[idx % weeks.length];
+                const isShip = (idx % 2) === 0;
+                const periodWeeks = weeksCount * 7;
+
+                if(isShip) {
+                    /* === OKRES NA STATKU === */
+                    // Wszystkie dni jako praca (niebieski) - podróż NIE jest kosztem pracy
+                    for(let d=0; d<periodWeeks; d++) {
+                        if(date.isBefore(end)) {
+                            this.dayTypes[date.format("YYYY-MM-DD")] = 'ship';
+                            date = date.add(1, 'day');
+                        }
+                    }
+                    
+                } else {
+                    /* === OKRES W DOMU/URLOPU === */
+                    
+                    // POCZĄTEK URLOPU = Dni podróży do domu (po pracy)
+                    for(let d=0; d<this.travelAfter; d++) {
+                        if(date.isBefore(end)) {
+                            this.dayTypes[date.format("YYYY-MM-DD")] = 'travel';
+                            date = date.add(1, 'day');
+                        }
+                    }
+                    
+                    // Środek urlopu = normalne dni w domu (zielony)
+                    const homeDays = periodWeeks - this.travelAfter - this.travelBefore;
+                    for(let d=0; d<homeDays; d++) {
+                        if(date.isBefore(end)) {
+                            this.dayTypes[date.format("YYYY-MM-DD")] = 'home';
+                            date = date.add(1, 'day');
+                        }
+                    }
+                    
+                    // KONIEC URLOPU = Dni podróży na statek (przed pracą)
+                    for(let d=0; d<this.travelBefore; d++) {
+                        if(date.isBefore(end)) {
+                            this.dayTypes[date.format("YYYY-MM-DD")] = 'travel';
+                            date = date.add(1, 'day');
+                        }
+                    }
+                }
+
+                idx++;
+            }
+
+            this.generateMonths(start, end);
+        },
+
+
+        /* -------- MONTH GENERATION -------- */
+        generateMonths(startDate, endDate) {
+
+            this.calendarMonths = [];
+
+            let cur = startDate.startOf("month");
+            const monthNames = [
+                "January","February","March","April","May","June",
+                "July","August","September","October","November","December"
+            ];
+
+            while(cur.isBefore(endDate)) {
+
+                let month = {
+                    name: `${monthNames[cur.month()]} ${cur.year()}`,
+                    days: []
+                };
+
+                let offset = cur.day();
+                offset = offset === 0 ? 6 : offset - 1;
+
+                for(let i=0; i<offset; i++)
+                    month.days.push({number:'',type:'empty'});
+
+                const days = cur.daysInMonth();
+
+                for(let d=1; d<=days; d++) {
+                    const date = cur.date(d);
+                    const ds = date.format("YYYY-MM-DD");
+                    month.days.push({
+                        number: d,
+                        type: this.dayTypes[ds] ?? 'empty'
+                    });
+                }
+
+                this.calendarMonths.push(month);
+                cur = cur.add(1,"month");
+            }
+        },
+
+
+        /* -------- EXPORT PDF -------- */
+        exportToPDF() {
+            setTimeout(() => window.print(), 100);
+        }
+    }
+}
+</script>
+
+</body>
+</html>
